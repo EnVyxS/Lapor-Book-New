@@ -83,13 +83,13 @@ class _ListItemState extends State<ListItem> {
                         onPressed: () {
                           Navigator.pop(context);
                         },
-                        child: Text('Batal'),
+                        child: const Text('Batal'),
                       ),
                       TextButton(
                         onPressed: () {
                           deleteLaporan();
                         },
-                        child: Text('Hapus'),
+                        child: const Text('Hapus'),
                       ),
                     ],
                   );
@@ -153,11 +153,11 @@ class _ListItemState extends State<ListItem> {
                       mainAxisAlignment: MainAxisAlignment.center,
                       children: [
                         Text(
-                          widget.laporan.like.toString(),
+                          widget.laporan.likeCount.toString(),
                           style: headerStyle(level: 5, dark: false),
                         ),
                         Padding(
-                          padding: EdgeInsets.only(
+                          padding: const EdgeInsets.only(
                               left:
                                   5), // Sesuaikan nilai padding sesuai keinginan Anda
                           child: Image.asset(
@@ -166,7 +166,7 @@ class _ListItemState extends State<ListItem> {
                             height: 13,
                           ),
                         ),
-                        SizedBox(
+                        const SizedBox(
                           width: 5,
                         ),
                         Text(
@@ -174,7 +174,7 @@ class _ListItemState extends State<ListItem> {
                           style: headerStyle(level: 5, dark: false),
                         ),
                         Padding(
-                          padding: EdgeInsets.only(
+                          padding: const EdgeInsets.only(
                               left:
                                   5), // Sesuaikan nilai padding sesuai keinginan Anda
                           child: Image.asset(

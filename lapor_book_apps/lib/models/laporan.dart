@@ -11,7 +11,8 @@ class Laporan {
   final String status;
   final DateTime tanggal;
   final String maps;
-  final int like;
+  final int likeCount;
+  List<Like>? like;
   List<Komentar>? komentar;
 
   Laporan(
@@ -26,6 +27,7 @@ class Laporan {
       required this.deskripsi,
       required this.komentar,
       required this.maps,
+      required this.likeCount,
       required this.like});
 }
 
@@ -35,4 +37,13 @@ class Komentar {
   final DateTime waktu;
 
   Komentar({required this.nama, required this.isi, required this.waktu});
+}
+
+class Like{
+  final bool isLiked;
+  final DateTime waktu;
+  final String uid;
+  final String uidLaporan;
+
+  Like({required this.isLiked, required this.waktu, required this.uid, required this.uidLaporan});
 }

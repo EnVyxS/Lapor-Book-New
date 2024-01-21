@@ -40,6 +40,18 @@ class _MyLaporanState extends State<MyLaporan> {
               waktu: map['waktu']
             );
           }).toList();
+
+          List<dynamic>? likeData = documents.data()['likes'];
+          List<Like>? listLike = likeData?.map((map){
+            return Like(
+              isLiked: map['isLiked'],
+              waktu: map['timestamp'],
+              uid: map['uid'], 
+              uidLaporan: 'uidLaporan',
+              
+            );
+          }).toList();
+
           listLaporan.add(
             Laporan(
               uid: documents.data()['uid'],
@@ -52,7 +64,8 @@ class _MyLaporanState extends State<MyLaporan> {
               gambar: documents.data()['gambar'],
               tanggal: documents['tanggal'].toDate(),
               maps: documents.data()['maps'],
-              like: documents.data()['like'],
+              likeCount: documents.data()['like'],
+              like: listLike,
               komentar: listKomentar,
             ),
           );

@@ -20,9 +20,8 @@ class DetailPage extends StatefulWidget {
 class _DetailPageState extends State<DetailPage> {
   bool _isLoading = false;
   String? status;
-  bool isLiked = false;
+  bool isLike = false;
   TextEditingController commentController = TextEditingController();
-  List<String> comments = [];
 
   Future launch(String uri) async {
     if (uri == '') return;
@@ -104,16 +103,42 @@ class _DetailPageState extends State<DetailPage> {
                                 laporan.gambar != ''
                                     ? Image.network(laporan.gambar!)
                                     : Image.asset('assets/images/emperor.jpg'),
-                                LikeButton(
-                                  isLiked: isLiked,
-                                  onTap: () async {
-                                    if (!isLiked) {
-                                      setState(() {
-                                        saveLikeData(laporan.docId);
-                                      });
+
+                                FutureBuilder<List<Like>>(
+                                  future: getLikedData(laporan.docId),
+                                  builder: (context, snapshot) {
+                                    if (snapshot.connectionState ==
+                                        ConnectionState.waiting) {
+                                      return CircularProgressIndicator();
+                                    } else if (snapshot.hasError) {
+                                      return Text('Error: ${snapshot.error}');
+                                    } else {
+                                      bool isLikedByCurrentUser = false;
+
+                                      // ek user sudah like belum
+                                      if (snapshot.data?.isNotEmpty ?? false) {
+                                        for (Like like in snapshot.data!) {
+                                          if (like.uid ==
+                                              FirebaseAuth
+                                                  .instance.currentUser!.uid) {
+                                            isLikedByCurrentUser = like.isLiked;
+                                            break;
+                                          }
+                                        }
+                                      }
+
+                                      return LikeButton(
+                                        isLiked: isLikedByCurrentUser,
+                                        onTap: () async {
+                                          setState(() {
+                                            saveLikeData(laporan.docId);
+                                          });
+                                        },
+                                      );
                                     }
                                   },
-                                ),
+                                )
+
                               ],
                             ),
                           ),
@@ -179,33 +204,6 @@ class _DetailPageState extends State<DetailPage> {
                             style: headerStyle(level: 3),
                           ),
                           const SizedBox(height: 10),
-                          // FutureBuilder<List<Komentar>>(
-                          //   future: getCommentsData(laporan.docId),
-                          //   builder: (context, snapshot) {
-                          //     if (snapshot.connectionState ==
-                          //         ConnectionState.waiting) {
-                          //       return CircularProgressIndicator();
-                          //     } else if (snapshot.hasError) {
-                          //       return Text('Error: ${snapshot.error}');
-                          //     } else if (!snapshot.hasData ||
-                          //         snapshot.data!.isEmpty) {
-                          //       return Text('Tidak ada komentar.');
-                          //     } else {
-                          //       // Menampilkan daftar komentar
-                          //       return Column(
-                          //         children: (snapshot.data as List<Komentar>)
-                          //             .map((comment) => ListTile(
-                          //                   title: Text(comment.nama),
-                          //                   subtitle: Text(comment.isi),
-                          //                   trailing: Text(
-                          //                       DateFormat('dd MMM yyyy HH:mm')
-                          //                           .format(comment.waktu)),
-                          //                 ))
-                          //             .toList(),
-                          //       );
-                          //     }
-                          //   },
-                          // ),
                           FutureBuilder<List<Komentar>>(
                             future: getCommentsData(laporan.docId),
                             builder: (context, snapshot) {
@@ -237,7 +235,6 @@ class _DetailPageState extends State<DetailPage> {
                               }
                             },
                           ),
-
                           Row(
                             children: [
                               Expanded(
@@ -268,13 +265,6 @@ class _DetailPageState extends State<DetailPage> {
     );
   }
 
-//   @override
-// void initState() {
-//   super.initState();
-//   // Panggil fungsi untuk mengambil data komentar pada saat widget dibuat
-//   getCommentsData();
-// }
-
   Container textStatus(String text, var bgcolor, var textcolor) {
     return Container(
       width: 150,
@@ -301,9 +291,15 @@ class _DetailPageState extends State<DetailPage> {
       DocumentSnapshot likeDoc =
           await laporanCollection.doc(docId).collection('likes').doc(uid).get();
 
+      String likeId = DateTime.now().toIso8601String() +
+          Random().nextInt(10000000).toString();
+
       if (!likeDoc.exists) {
         await laporanCollection.doc(docId).collection('likes').doc(uid).set({
+          'uid': uid,
           'timestamp': FieldValue.serverTimestamp(),
+          'isLiked': true,
+          'uidLaporan': likeId
         });
 
         await laporanCollection.doc(docId).update({
@@ -312,7 +308,7 @@ class _DetailPageState extends State<DetailPage> {
       }
       if (likeDoc.exists) {
         setState(() {
-          isLiked = true;
+          isLike = true;
         });
       }
     } catch (e) {
@@ -332,7 +328,8 @@ class _DetailPageState extends State<DetailPage> {
       String commentText = commentController.text.trim();
 
       // Membuat ID unik untuk setiap komentar
-      String commentId = DateTime.now().toIso8601String() + Random().nextInt(10000000).toString();
+      String commentId = DateTime.now().toIso8601String() +
+          Random().nextInt(10000000).toString();
 
       await laporanCollection
           .doc(docId)
@@ -351,7 +348,6 @@ class _DetailPageState extends State<DetailPage> {
         ),
       );
 
-      // Clear the comment text field after successful addition
       commentController.clear();
     } catch (e) {
       print('Error adding comment: $e');
@@ -363,65 +359,33 @@ class _DetailPageState extends State<DetailPage> {
     }
   }
 
-  // Future<List<Komentar>> getCommentsData(String docId) async {
-  //   try {
-  //     // Ganti 'docId' dengan parameter yang sesuai
-  //     QuerySnapshot commentSnapshot = await FirebaseFirestore.instance
-  //         .collection('laporan')
-  //         .doc(docId)
-  //         .collection('comments')
-  //         .get();
+  Future<List<Like>> getLikedData(String docId) async {
+    try {
+      QuerySnapshot likeSnapshot = await FirebaseFirestore.instance
+          .collection('laporan')
+          .doc(docId)
+          .collection('likes')
+          .get();
 
-  //     // Dapatkan data komentar
-  //     List<Komentar> comments = commentSnapshot.docs.map((doc) {
-  //       Map<String, dynamic> data = doc.data() as Map<String, dynamic>;
-  //       return Komentar(
-  //         nama: data['nama'] ?? '',
-  //         isi: data['comment'] ?? '',
-  //         waktu: (data['timestamp'] as Timestamp?)?.toDate() ?? DateTime.now(),
-  //       );
-  //     }).toList();
+      List<Like> like = likeSnapshot.docs.map((doc) {
+        Map<String, dynamic> data = doc.data() as Map<String, dynamic>;
+        return Like(
+            isLiked: data['isLiked'] ?? false,
+            waktu:
+                (data['timestamp'] as Timestamp?)?.toDate() ?? DateTime.now(),
+            uid: data['uid'] ?? '',
+            uidLaporan: data['uidLaporan'] ?? '');
+      }).toList();
 
-  //     return comments;
-  //   } catch (e) {
-  //     print('Error getting comments data: $e');
-  //     return [];
-  //   }
-  // }
-
-  // Future<List<Komentar>> getCommentsData(String docId) async {
-  //   try {
-  //     // Ganti 'docId' dengan parameter yang sesuai
-  //     QuerySnapshot commentSnapshot = await FirebaseFirestore.instance
-  //         .collection('laporan')
-  //         .doc(docId)
-  //         .collection('comments')
-  //         .orderBy('timestamp', descending: false)
-  //         .get();
-
-  //     // Dapatkan data komentar
-  //     List<Komentar> comments = commentSnapshot.docs.map((doc) {
-  //       Map<String, dynamic> data = doc.data() as Map<String, dynamic>;
-  //       return Komentar(
-  //         nama: data['nama'] ?? '',
-  //         isi: data['comment'] ?? '',
-  //         waktu: (data['timestamp'] as Timestamp?)?.toDate() ?? DateTime.now(),
-  //       );
-  //     }).toList();
-
-  //     // Urutkan komentar berdasarkan waktu (tercepat ke terbaru)
-  //     comments.sort((a, b) => a.waktu.compareTo(b.waktu));
-
-  //     return comments;
-  //   } catch (e) {
-  //     print('Error getting comments data: $e');
-  //     return [];
-  //   }
-  // }
+      return like;
+    } catch (e) {
+      print('Error getting comments data: $e');
+      return [];
+    }
+  }
 
   Future<List<Komentar>> getCommentsData(String docId) async {
     try {
-      // Ganti 'docId' dengan parameter yang sesuai
       QuerySnapshot commentSnapshot = await FirebaseFirestore.instance
           .collection('laporan')
           .doc(docId)
