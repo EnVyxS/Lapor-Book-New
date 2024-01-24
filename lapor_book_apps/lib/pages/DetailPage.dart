@@ -103,7 +103,6 @@ class _DetailPageState extends State<DetailPage> {
                                 laporan.gambar != ''
                                     ? Image.network(laporan.gambar!)
                                     : Image.asset('assets/images/emperor.jpg'),
-
                                 FutureBuilder<List<Like>>(
                                   future: getLikedData(laporan.docId),
                                   builder: (context, snapshot) {
@@ -115,7 +114,7 @@ class _DetailPageState extends State<DetailPage> {
                                     } else {
                                       bool isLikedByCurrentUser = false;
 
-                                      // ek user sudah like belum
+                                      // cek user sudah like belum
                                       if (snapshot.data?.isNotEmpty ?? false) {
                                         for (Like like in snapshot.data!) {
                                           if (like.uid ==
@@ -125,20 +124,43 @@ class _DetailPageState extends State<DetailPage> {
                                             break;
                                           }
                                         }
+                                      } else {
+                                        //hilang jika sudah like
+                                        return LikeButton(
+                                          isLiked: isLikedByCurrentUser,
+                                          onTap: () async {
+                                            setState(() {
+                                              saveLikeData(laporan.docId);
+                                            });
+                                          },
+                                        );
                                       }
+                                      //spam like jika admin
+                                      if (akun.role == 'admin') {
+                                        return LikeButton(
+                                          isLiked: false,
+                                          onTap: () async {
+                                            setState(() {
+                                              saveLikeData(laporan.docId);
+                                            });
+                                          },
+                                        );
+                                      }
+                                      return Text('');
 
-                                      return LikeButton(
-                                        isLiked: isLikedByCurrentUser,
-                                        onTap: () async {
-                                          setState(() {
-                                            saveLikeData(laporan.docId);
-                                          });
-                                        },
-                                      );
+                                      //komen di bawah buat like yang bagus dikit
+
+                                      // return LikeButton(
+                                      //     isLiked: isLikedByCurrentUser,
+                                      //     onTap: () async {
+                                      //       setState(() {
+                                      //         saveLikeData(laporan.docId);
+                                      //       });
+                                      //     },
+                                      //   );
                                     }
                                   },
                                 )
-
                               ],
                             ),
                           ),
@@ -286,7 +308,8 @@ class _DetailPageState extends State<DetailPage> {
       CollectionReference laporanCollection =
           FirebaseFirestore.instance.collection('laporan');
 
-      final String uid = FirebaseAuth.instance.currentUser!.uid;
+      final String uid = DateTime.now().toIso8601String() +
+          Random().nextInt(10000000).toString();
 
       DocumentSnapshot likeDoc =
           await laporanCollection.doc(docId).collection('likes').doc(uid).get();

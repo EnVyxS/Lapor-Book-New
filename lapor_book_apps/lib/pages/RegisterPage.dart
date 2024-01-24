@@ -5,6 +5,7 @@ import 'package:lapor_book_apps/components/styles.dart';
 import 'package:lapor_book_apps/components/validators.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
+// import 'package:lapor_book_apps/pages/dashboard/ProfilePage.dart';
 
 class RegisterPage extends StatefulWidget {
   const RegisterPage({super.key});
@@ -184,30 +185,64 @@ class RegisterStatePage extends State<RegisterPage> {
     );
   }
 
+  // void register() async {
+  //   setState(() {
+  //     _isLoading = true;
+  //   });
+
+  //   try {
+  //     CollectionReference akunCollection = _db.collection('akun');
+
+  //     final pass = _password.text;
+  //     await _auth.createUserWithEmailAndPassword(email: email!, password: pass);
+
+  //     final docId = akunCollection.doc().id;
+  //     await akunCollection.doc(docId).set({
+  //       'uid': _auth.currentUser!.uid,
+  //       'nama': nama,
+  //       'email': email,
+  //       'noHp': noHp,
+  //       'docId': docId,
+  //       'role': 'user',
+  //     });
+
+  //     Navigator.pushNamedAndRemoveUntil(
+  //         context, '/login', ModalRoute.withName('/login'));
+  //   } catch (e) {
+  //     final snackbar = SnackBar(content: Text(e.toString()));
+  //     ScaffoldMessenger.of(context).showSnackBar(snackbar);
+  //     print(e);
+  //   } finally {
+  //     setState(() {
+  //       _isLoading = false;
+  //     });
+  //   }
+  // }
+
   void register() async {
     setState(() {
       _isLoading = true;
     });
-
     try {
       CollectionReference akunCollection = _db.collection('akun');
 
-      final pass = _password.text;
-      await _auth.createUserWithEmailAndPassword(email: email!, password: pass);
+      final password = _password.text;
+      await _auth.createUserWithEmailAndPassword(
+          email: email!, password: password);
 
       final docId = akunCollection.doc().id;
       await akunCollection.doc(docId).set({
-        'profile': '', //masih error
         'uid': _auth.currentUser!.uid,
+        'profile': '',
         'nama': nama,
         'email': email,
-        'noHp': noHp,
+        'noHP': noHp,
         'docId': docId,
         'role': 'user',
       });
 
       Navigator.pushNamedAndRemoveUntil(
-          context, '/login', ModalRoute.withName('login'));
+          context, '/login', ModalRoute.withName('/login'));
     } catch (e) {
       final snackbar = SnackBar(content: Text(e.toString()));
       ScaffoldMessenger.of(context).showSnackBar(snackbar);

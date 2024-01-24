@@ -2,7 +2,7 @@ class Akun {
   final String uid;
   final String docId;
 
-  String? profile; //masih error
+  final String? profile; //masih error
   final String nama;
   final String noHP;
   final String email;

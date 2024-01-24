@@ -23,16 +23,19 @@ class _SplashPage extends State<SplashFull> {
   void initState() {
     super.initState();
     // nanti bagian ini diganti cek koneksi ke firebase dan cek login
-    final User? user = auth.currentUser;
-    if (user != null) {
-      Future.delayed(Duration.zero, () {
-        Navigator.pushReplacementNamed(context, '/dashboard');
-      });
-    } else {
-      Future.delayed(Duration.zero, () {
+    // final User? user = auth.currentUser;
+    // if (user != null) {
+    //   Future.delayed(Duration.zero, () {
+    //     Navigator.pushReplacementNamed(context, '/dashboard');
+    //   });
+    // } else {
+    //   Future.delayed(Duration.zero, () {
+    //     Navigator.pushReplacementNamed(context, '/login');
+    //   });
+    // }
+    Future.delayed(Duration.zero, () {
         Navigator.pushReplacementNamed(context, '/login');
       });
-    }
   }
 
   @override

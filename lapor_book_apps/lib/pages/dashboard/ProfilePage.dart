@@ -1,9 +1,9 @@
 import 'dart:io';
 
+import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:firebase_storage/firebase_storage.dart';
 import 'package:flutter/material.dart';
-import 'package:geolocator/geolocator.dart';
 import 'package:image_picker/image_picker.dart';
 import 'package:lapor_book_apps/components/styles.dart';
 import 'package:lapor_book_apps/models/akun.dart';
@@ -18,16 +18,9 @@ class Profile extends StatefulWidget {
 class _ProfileState extends State<Profile> {
   final _auth = FirebaseAuth.instance;
   final _storage = FirebaseStorage.instance;
+  final _firestore = FirebaseFirestore.instance;
   ImagePicker picker = ImagePicker();
   XFile? file;
-
-  Image imagePreview() {
-    if (file == null) {
-      return Image.asset('assets/images/emperor.jpg', width: 180, height: 180);
-    } else {
-      return Image.file(File(file!.path), width: 180, height: 180);
-    }
-  }
 
   @override
   Widget build(BuildContext context) {
@@ -46,30 +39,42 @@ class _ProfileState extends State<Profile> {
               },
               child: CircleAvatar(
                 radius: 80,
-                backgroundColor:
-                    primaryColor, // Atur warna latar belakang avatar sesuai kebutuhan
+                backgroundColor: primaryColor,
                 child: ClipOval(
-                  child: SizedBox(
-                    width: 160,
-                    height: 160,
-                    child: imagePreview(),
-                  ),
-                ),
+                    child: FutureBuilder<String>(
+                  future: getImageUrlFromFirestore(),
+                  builder: (context, snapshot) {
+                    if (snapshot.connectionState == ConnectionState.done) {
+                      if (snapshot.hasError) {
+                        // Handle error state
+                        return Image.asset('assets/images/emperor.jpg',
+                            width: 180, height: 180);
+                      }
+
+                      String? imageUrl = snapshot.data;
+
+                      if (imageUrl != null && imageUrl.isNotEmpty) {
+                        // 'profile' field exists and has a valid URL
+                        return Image.network(imageUrl, width: 160, height: 160);
+                      } else {
+                        // 'profile' field does not exist or is empty
+                        // Set the 'profile' field to a default URL or handle it as needed
+                        // Note: This is just an example; you should replace 'default_image_url'
+                        // with your actual default image URL or handle it according to your logic.
+                        return Image.asset('assets/images/emperor.jpg',
+                            width: 180, height: 180);
+                      }
+                    } else if (snapshot.connectionState ==
+                        ConnectionState.waiting) {
+                      return CircularProgressIndicator();
+                    } else {
+                      return Image.asset('assets/images/emperor.jpg',
+                          width: 180, height: 180);
+                    }
+                  },
+                )),
               ),
             ),
-
-            // CircleAvatar(
-            //   radius: 80,
-            //   backgroundColor:
-            //       primaryColor, // Atur warna latar belakang avatar sesuai kebutuhan
-            //   child: ClipOval(
-            //     child: SizedBox(
-            //       width: 160,
-            //       height: 160,
-            //       child: imagePreview(),
-            //     ),
-            //   ),
-            // ),
             SizedBox(
               height: 30,
             ),
@@ -78,7 +83,7 @@ class _ProfileState extends State<Profile> {
               style: TextStyle(
                   color: primaryColor,
                   fontWeight: FontWeight.bold,
-                  fontSize: 40),
+                  fontSize: 28),
             ),
             Text(
               widget.akun.role,
@@ -146,63 +151,79 @@ class _ProfileState extends State<Profile> {
   }
 
   Future<dynamic> uploadDialog(BuildContext context) {
+    CollectionReference akunCollection = _firestore.collection('akun');
+
     return showDialog(
-        context: context,
-        builder: (BuildContext) {
-          return AlertDialog(
-            title: Text('Pilih sumber '),
-            actions: [
-              TextButton(
-                onPressed: () async {
-                  XFile? upload =
-                      await picker.pickImage(source: ImageSource.camera);
+      context: context,
+      builder: (BuildContext) {
+        return StatefulBuilder(
+          builder: (context, setState) {
+            return AlertDialog(
+              title: Text('Pilih sumber'),
+              content: Column(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  Row(
+                    mainAxisAlignment: MainAxisAlignment.spaceAround,
+                    children: [
+                      ElevatedButton(
+                        onPressed: () async {
+                          XFile? upload = await picker.pickImage(
+                              source: ImageSource.camera);
 
-                  setState(() {
-                    file = upload;
-                  });
+                          setState(() {
+                            file = upload;
+                          });
+                        },
+                        child: const Text('Camera'),
+                      ),
+                      ElevatedButton(
+                        onPressed: () async {
+                          XFile? upload = await picker.pickImage(
+                              source: ImageSource.gallery);
 
-                  Navigator.of(context).pop();
-                },
-                child: const Icon(Icons.camera_alt),
+                          setState(() {
+                            file = upload;
+                          });
+                        },
+                        child: const Text('Gallery'),
+                      ),
+                    ],
+                  ),
+                  if (file != null)
+                    Row(
+                      mainAxisAlignment: MainAxisAlignment.spaceAround,
+                      children: [
+                        ElevatedButton(
+                          onPressed: () async {
+                            String url = await uploadImage();
+
+                            await akunCollection
+                                // .doc(_auth.currentUser!.uid)
+                                .doc(widget.akun.docId)
+                                .update({'profile': url});
+                            Navigator.of(context).pop();
+                          },
+                          child: const Text('Save'),
+                        ),
+                        ElevatedButton(
+                          onPressed: () {
+                            setState(() {
+                              file = null;
+                            });
+                            Navigator.of(context).pop();
+                          },
+                          child: const Text('Abort'),
+                        ),
+                      ],
+                    ),
+                ],
               ),
-              TextButton(
-                onPressed: () async {
-                  XFile? upload =
-                      await picker.pickImage(source: ImageSource.gallery);
-                  setState(() {
-                    file = upload;
-                  });
-
-                  Navigator.of(context).pop();
-                },
-                child: const Icon(Icons.photo_library),
-              ),
-            ],
-          );
-        });
-  }
-
-  Future<Position> getCurrentLocation() async {
-    bool isServiceEnabled = await Geolocator.isLocationServiceEnabled();
-    if (!isServiceEnabled) {
-      return Future.error('Location services are disabled.');
-    }
-
-    LocationPermission permission = await Geolocator.checkPermission();
-    if (permission == LocationPermission.denied) {
-      permission = await Geolocator.requestPermission();
-
-      if (permission == LocationPermission.denied) {
-        return Future.error('Location permissions are denied');
-      }
-    }
-
-    if (permission == LocationPermission.deniedForever) {
-      return Future.error(
-          'Location permissions are permantly denied, we cannot request permissions.');
-    }
-
-    return await Geolocator.getCurrentPosition();
+            );
+          },
+        );
+      },
+    );
   }
 
   Future<String> uploadImage() async {
@@ -219,6 +240,22 @@ class _ProfileState extends State<Profile> {
 
       return await storedDir.getDownloadURL();
     } catch (e) {
+      return '';
+    }
+  }
+
+  Future<String> getImageUrlFromFirestore() async {
+    DocumentSnapshot snapshot = await FirebaseFirestore.instance
+        .collection('akun')
+        .doc(widget.akun.docId)
+        .get();
+
+    String? profileUrl = snapshot['profile'];
+
+    if (profileUrl != null && profileUrl.isNotEmpty) {
+      return profileUrl;
+    } else {
+      // Jika profil kosong atau tidak ada, kembalikan URL gambar default
       return '';
     }
   }
